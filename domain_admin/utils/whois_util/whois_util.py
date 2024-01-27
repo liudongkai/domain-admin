@@ -89,7 +89,7 @@ def load_whois_servers_config():
     return config
 
 
-def get_whois_config(domain):
+def get_whois_config(domain, whois_server=None):
     """
     获取域名信息所在服务器
     :param domain: str
@@ -98,7 +98,11 @@ def get_whois_config(domain):
     global WHOIS_CONFIGS
 
     # logger.debug('get_whois_config %s', domain)
-    root = domain.split('.')[-1]
+    if whois_server:
+        root = whois_server
+    else:
+        root = domain.split('.')[-1]
+    logger.debug('get_whois_config %s', root)
 
     if WHOIS_CONFIGS is None:
         WHOIS_CONFIGS = load_whois_servers_config()
@@ -130,13 +134,13 @@ def get_domain_whois_server_from_root(domain):
         return result[0].strip()
 
 
-def get_domain_raw_whois(domain):
-    whois_config = get_whois_config(domain)
+def get_domain_raw_whois(domain, whois_server=None):
+    whois_config = get_whois_config(domain, whois_server)
 
     whois_server = whois_config['whois_server']
 
     raw_data = get_whois_raw(domain, whois_server, timeout=10)
-    logger.debug(raw_data)
+    logger.debug('get_domain_raw_whois\n%s', raw_data)
     return raw_data
 
 
@@ -154,15 +158,15 @@ def handle_url(url):
         return 'http://' + url
 
 
-def get_domain_whois(domain):
+def get_domain_whois(domain, domain_whois_server=None):
     logger.debug('get_domain_whois %s', domain)
 
-    raw_data = get_domain_raw_whois(domain)
+    raw_data = get_domain_raw_whois(domain, domain_whois_server)
 
     data = parse_whois_raw(raw_data)
-    logger.debug(json.dumps(data, indent=2, ensure_ascii=False))
+    logger.debug('get_domain_whois dump json\n%s', json.dumps(data, indent=2, ensure_ascii=False))
 
-    whois_config = get_whois_config(domain)
+    whois_config = get_whois_config(domain, domain_whois_server)
     logger.debug('whois_config', whois_config)
 
     whois_server = whois_config['whois_server']
@@ -177,14 +181,21 @@ def get_domain_whois(domain):
     start_time = data.get(registry_time)
     expire_time = data.get(expire_time)
 
+    if bool(start_time) ^ bool(expire_time):
+        raw_data = get_domain_raw_whois(domain, domain_whois_server)
+        data = parse_whois_raw(raw_data)
+        logger.debug('get_domain_whois dump json（2nd）\n%s', json.dumps(data, indent=2, ensure_ascii=False))
+
     registrar = data.get(registrar_key, '').strip()
     registrar_url = data.get(registrar_url_key, '').strip()
 
+    output_time_format = '%Y-%m-%d %H:%M:%S'
+
     if start_time:
-        start_time = parse_time(start_time, registry_time_format)
+        start_time = parse_time(start_time, registry_time_format).strftime(output_time_format)
 
     if expire_time:
-        expire_time = parse_time(expire_time, expire_time_format)
+        expire_time = parse_time(expire_time, expire_time_format).strftime(output_time_format)
 
     # cn域名注册商
     if registrar and not registrar_url:
@@ -202,12 +213,13 @@ def get_domain_whois(domain):
             'registrar': registrar,
             'registrar_url': registrar_url,
             'expire_time': expire_time,
+            'whois_server': whois_server,
         }
     else:
         return None
 
 
-def get_domain_info(domain):
+def get_domain_info(domain, domain_whois_server=None):
     """
     获取域名信息
     :param domain: str
@@ -217,7 +229,7 @@ def get_domain_info(domain):
     domain = resolve_domain(domain)
     logger.debug("resolve_domain: %s", domain)
 
-    res = get_domain_whois(domain)
+    res = get_domain_whois(domain, domain_whois_server)
 
     logger.debug(json_util.json_encode(res, indent=2, ensure_ascii=False))
 

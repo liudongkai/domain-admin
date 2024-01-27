@@ -107,12 +107,12 @@ def update_domain_info_row(row):
     domain_whois = None
 
     try:
-        domain_whois = whois_util.get_domain_info(row.domain)
+        domain_whois = whois_util.get_domain_info(row.domain, row.domain_whois_server)
     except Exception as e:
         # 增加容错
         try:
             time.sleep(3)
-            domain_whois = whois_util.get_domain_info(row.domain)
+            domain_whois = whois_util.get_domain_info(row.domain, row.domain_whois_server)
         except Exception as e:
             pass
 

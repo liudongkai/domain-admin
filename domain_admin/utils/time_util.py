@@ -35,6 +35,10 @@ def get_diff_days(start_date, end_date):
     :param end_date: [datetime, DateTimeField]
     :return:
     """
+    # 若end_date的类型为str，则转换为datetime
+    if isinstance(end_date, str):
+        end_date = parse_time(end_date)
+
     if start_date and end_date \
             and isinstance(start_date, datetime) \
             and isinstance(end_date, datetime):

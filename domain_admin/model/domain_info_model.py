@@ -38,6 +38,9 @@ class DomainInfoModel(BaseModel):
     # 域名注册商地址
     domain_registrar_url = CharField(default="")
 
+    # whois服务器
+    domain_whois_server = CharField(default="")
+
     # 域名注册时间
     domain_start_time = DateTimeField(default=None, null=True)
 
