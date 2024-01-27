@@ -248,7 +248,8 @@ def add_domain_from_file(filename, user_id):
     lst = [
         {
             'domain': item['domain'],
-            'comment': item.get('comment'),
+            # 如果item.get('comment')为None，会导致插入失败
+            'comment': item.get('comment', ''),
             'group_id': group_map.get(item.get('group_name'), 0),
             'tags_raw': json.dumps(item.get('tags'), ensure_ascii=False),
             'user_id': user_id,
@@ -321,7 +322,9 @@ def get_domain_info_query(keyword, group_ids, domain_expire_days, role, user_id)
             query = query.where(DomainInfoModel.user_id == user_id)
 
     if domain_expire_days is not None and len(domain_expire_days) == 2:
-        if domain_expire_days[0] is None:
+        if domain_expire_days[0] is None and domain_expire_days[1] is None:
+            query = query.where(DomainInfoModel.domain_expire_days.is_null())
+        elif domain_expire_days[0] is None:
             query = query.where(DomainInfoModel.domain_expire_days <= domain_expire_days[1])
         elif domain_expire_days[1] is None:
             query = query.where(DomainInfoModel.domain_expire_days >= domain_expire_days[0])

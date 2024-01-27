@@ -45,7 +45,7 @@ class DomainInfoModel(BaseModel):
     domain_expire_time = DateTimeField(default=None, null=True)
 
     # 域名过期剩余天数，仅用于排序
-    domain_expire_days = IntegerField(default=0, null=False)
+    domain_expire_days = IntegerField(default=None, null=True)
 
     # 域名信息自动更新
     is_auto_update = BooleanField(default=True)
@@ -96,7 +96,12 @@ class DomainInfoModel(BaseModel):
         域名过期天数，用于前端显示
         :return: int
         """
-        return time_util.get_diff_days(datetime.now(), self.domain_expire_time)
+        if self.domain_start_time:
+            if not self.domain_expire_time:
+                return None
+            return time_util.get_diff_days(datetime.now(), self.domain_expire_time)
+        else:
+            return -9999
 
     expire_days = real_domain_expire_days
 
