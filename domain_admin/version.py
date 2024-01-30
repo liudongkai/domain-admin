@@ -4,7 +4,9 @@
 
 Python各版本的差异总结
 https://blog.csdn.net/qq_35952638/article/details/103101820
+
+https://github.com/louislam/uptime-kuma
 """
 from __future__ import print_function, unicode_literals, absolute_import, division
 
-VERSION = '1.5.39'
+VERSION = '1.6.2'

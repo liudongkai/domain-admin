@@ -8,7 +8,7 @@ from domain_admin.api import (
     whois_api, address_api,
     domain_info_api, prometheus_api,
     log_operation_api, group_user_api,
-    log_async_task_api, issue_certificate_api, host_api)
+    log_async_task_api, issue_certificate_api, host_api, monitor_api, log_monitor_api)
 from domain_admin.api import domain_api
 from domain_admin.api import group_api
 from domain_admin.api import auth_api
@@ -78,6 +78,7 @@ routes = {
     '/api/getCronConfig': system_api.get_cron_config,
     '/api/updateCronConfig': system_api.update_cron_config,
     '/api/getSystemVersion': system_api.get_system_version,
+    '/api/getSystemData': system_api.get_system_data,
 
     # 用户管理 (管理员权限)
     '/api/getUserList': user_api.get_user_list,
@@ -177,4 +178,16 @@ routes = {
     '/api/getHostList': host_api.get_host_list,
     '/api/deleteHostById': host_api.delete_host_by_id,
 
+    # http监控
+    '/api/addMonitor': monitor_api.add_monitor,
+    '/api/updateMonitorById': monitor_api.update_monitor_by_id,
+    '/api/addMonitorActive': monitor_api.update_monitor_active,
+    '/api/removeMonitorById': monitor_api.remove_monitor_by_id,
+    '/api/getMonitorById': monitor_api.get_monitor_by_id,
+    '/api/getMonitorList': monitor_api.get_monitor_list,
+
+    # http监控日志
+    '/api/getLogMonitorList': log_monitor_api.get_log_monitor_list,
+    '/api/clearLogMonitor': log_monitor_api.clear_log_monitor,
+    '/api/clearAllLogMonitor': log_monitor_api.clear_all_log_monitor,
 }
