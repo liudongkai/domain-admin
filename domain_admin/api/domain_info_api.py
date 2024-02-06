@@ -19,7 +19,7 @@ from domain_admin.model.domain_model import DomainModel
 from domain_admin.model.group_model import GroupModel
 from domain_admin.model.group_user_model import GroupUserModel
 from domain_admin.service import domain_info_service, async_task_service, file_service, group_service, \
-    operation_service, group_user_service, domain_service, common_service
+    operation_service, group_user_service, domain_service, common_service, domain_icp_service, tag_service
 from domain_admin.utils import domain_util, time_util, icp_util
 from domain_admin.utils.flask_ext.app_exception import AppException
 from domain_admin.utils.open_api import crtsh_api
@@ -65,7 +65,7 @@ def add_domain_info():
 
     # 异步提交
     if is_auto_subdomain:
-        domain_service.auto_import_from_domain(
+        domain_service.auto_import_from_domain_async(
             root_domain=domain,
             group_id=group_id,
             user_id=current_user_id
@@ -76,6 +76,8 @@ def add_domain_info():
         #     group_id=group_id,
         #     user_id=current_user_id
         # )
+
+    tag_service.add_tags(tags)
 
     return {'domain_info_id': row.id}
 
@@ -141,7 +143,7 @@ def update_domain_info_by_id():
         domain_info_service.update_domain_info_row(domain_info_row)
 
     if is_auto_subdomain:
-        domain_service.auto_import_from_domain(
+        domain_service.auto_import_from_domain_async(
             root_domain=domain,
             group_id=group_id,
             user_id=current_user_id
@@ -153,6 +155,8 @@ def update_domain_info_by_id():
         #     group_id=group_id,
         #     user_id=current_user_id
         # )
+
+    tag_service.add_tags(tags)
 
 
 @operation_service.operation_log_decorator(
@@ -317,7 +321,7 @@ def update_domain_row_icp():
 def import_domain_info_from_file():
     """
     从文件导入域名
-    支持 txt 和 csv格式
+    支持格式: txt、xlsx、csv
     :return:
     """
     current_user_id = g.user_id
@@ -330,8 +334,7 @@ def import_domain_info_from_file():
     domain_info_service.add_domain_from_file(filename, current_user_id)
 
     # 异步查询
-    domain_info_service.update_all_domain_info_of_user(current_user_id)
-
+    domain_info_service.handle_auto_import_domain_info(current_user_id)
     # async_task_service.submit_task(fn=domain_info_service.update_all_domain_info_of_user, user_id=current_user_id)
 
 
@@ -550,8 +553,14 @@ def get_icp():
     # 解析域名
     resolve_domain = domain_util.parse_domain(domain)
 
-    res = icp_util.get_icp(resolve_domain)
+    item = domain_icp_service.get_domain_icp(resolve_domain)
+
+    if not item:
+        raise AppException('没有查到icp信息')
+
+    res = item.to_dict()
     res['resolve_domain'] = resolve_domain
+
     return res
 
 
