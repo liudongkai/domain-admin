@@ -102,7 +102,9 @@ def get_notify_list_of_user():
         for row in lst:
             group_list = []
             for group in row['groups']:
-                group_list.append(group_dict.get(group))
+                # bugfix: 如果用户删除分组后，分组数据不存在会出现null问题
+                if group in group_dict:
+                    group_list.append(group_dict.get(group))
 
             row['group_list'] = group_list
 
@@ -127,8 +129,8 @@ def add_notify():
     type_id = request.json['type_id']
     event_id = request.json['event_id']
     value = request.json['value']
-    groups = request.json['groups']
     expire_days = request.json['expire_days']
+    groups = request.json.get('groups') or []
     comment = request.json.get('comment') or ''
 
     value_raw = json.dumps(value, ensure_ascii=False)
@@ -203,9 +205,10 @@ def update_notify_by_id():
 
     event_id = request.json['event_id']
     value = request.json['value']
-    groups = request.json['groups']
+
     expire_days = request.json['expire_days']
     comment = request.json.get('comment') or ''
+    groups = request.json.get('groups') or []
 
     value_raw = json.dumps(value, ensure_ascii=False)
     groups_raw = json.dumps(groups, ensure_ascii=False)

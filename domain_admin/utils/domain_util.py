@@ -180,13 +180,23 @@ def extract_domain(domain):
 
 def get_root_domain(domain):
     """
-    解析出域名和顶级后缀
+    解析出域名和顶级后缀 rootdomain + suffix
     :param domain: str
     :return: str
     """
     extract_result = extract_domain(domain)
     return extract_result.registered_domain
     # return '.'.join([extract_result.domain, extract_result.suffix])
+
+
+def get_subdomain(domain):
+    """
+    解析出子域名前缀
+    :param domain: str
+    :return: str
+    """
+    extract_result = extract_domain(domain)
+    return extract_result.subdomain
 
 
 def is_ipv4(ip):
@@ -215,21 +225,47 @@ def encode_hostname(hostname):
 def verify_cert_common_name(common_name, domain):
     """
     验证证书
+    https://www.cnblogs.com/weifeng1463/p/12719027.html
+
+    所有品牌的通配符证书 SSL只能支持域名本身及下一级的所有子域名，而不是无限级支持子域名。
+
     :param common_name:
     :param domain:
     :return:
     """
-    logger.debug("%s <=> %s", common_name, domain)
+    # logger.debug("%s <=> %s", common_name, domain)
 
     if '*' in common_name:
         # 通配符 SSL 证书
-        common_name_root_domain = get_root_domain(common_name)
-        root_domain = get_root_domain(domain)
-        return common_name_root_domain == root_domain
+        common_name_root_domain = get_domain_parent(common_name)
+        root_domain = get_domain_parent(domain)
+        return common_name_root_domain == root_domain \
+               or common_name_root_domain == domain
     else:
         # 普通证书
         return common_name == domain
 
 
+def get_domain_parent(domain):
+    """
+    获取父级域名
+    :param domain:
+    :return:
+    eg:
+    www.chinafruitime.com => chinafruitime.com
+    blog.www.chinafruitime.com => www.chinafruitime.com
+    """
+    if not domain:
+        return ''
+
+    first_dot_index = domain.find('.')
+
+    if first_dot_index < 0:
+        return ''
+
+    return domain[first_dot_index + 1:]
+
+
 if __name__ == '__main__':
-    print(get_root_domain("*.juejin.cn"))
+    # print(get_root_domain("*.juejin.cn"))
+    print(get_subdomain("chinafruitime.com"))

@@ -18,6 +18,7 @@ from domain_admin.enums.config_key_enum import ConfigKeyEnum
 from domain_admin.enums.event_enum import EventEnum
 from domain_admin.enums.notify_type_enum import NotifyTypeEnum
 from domain_admin.log import logger
+from domain_admin.model.certificate_model import CertificateModel
 from domain_admin.model.domain_info_model import DomainInfoModel
 from domain_admin.model.domain_model import DomainModel
 from domain_admin.model.group_user_model import GroupUserModel
@@ -25,7 +26,7 @@ from domain_admin.model.notify_model import NotifyModel
 from domain_admin.service import domain_service, render_service, system_service, async_task_service, group_service
 from domain_admin.utils import email_util, json_util
 from domain_admin.utils.flask_ext.app_exception import AppException
-from domain_admin.utils.open_api import feishu_api, work_weixin_api, ding_talk_api
+from domain_admin.utils.open_api import feishu_api, work_weixin_api, ding_talk_api, telegram_api
 
 # 通知参数配置
 NOTIFY_CONFIGS = [
@@ -43,8 +44,17 @@ NOTIFY_CONFIGS = [
         'event_id': EventEnum.MONITOR_EXCEPTION,
         'email_template': 'monitor-email.html',
         'email_subject': '[Domain Admin]监控异常提醒',
+    },
+    {
+        'event_id': EventEnum.MONITOR_EXCEPTION_RESTORE,
+        'email_template': 'monitor-restore-email.html',
+        'email_subject': '[Domain Admin]监控异常恢复提醒',
+    },
+    {
+        'event_id': EventEnum.SSL_CERT_FILE_EXPIRE,
+        'email_template': 'cert-email.html',
+        'email_subject': '[Domain Admin]托管证书到期提醒',
     }
-
 ]
 
 
@@ -155,7 +165,8 @@ def notify_all_event():
         NotifyModel.status == True,
         NotifyModel.event_id.in_([
             EventEnum.SSL_CERT_EXPIRE,
-            EventEnum.DOMAIN_EXPIRE
+            EventEnum.DOMAIN_EXPIRE,
+            EventEnum.SSL_CERT_FILE_EXPIRE
         ])
     )
 
@@ -184,6 +195,25 @@ def notify_user_about_monitor_exception(monitor_row, error):
             logger.error(traceback.format_exc())
 
 
+def notify_user_about_monitor_exception_restore(monitor_row):
+    """
+    监控异常恢复通知
+    :param monitor_row:
+    :param error:
+    :return:
+    """
+    rows = NotifyModel.select().where(
+        NotifyModel.status == True,
+        NotifyModel.event_id == EventEnum.MONITOR_EXCEPTION_RESTORE
+    )
+
+    for row in rows:
+        try:
+            notify_user(notify_row=row, rows=rows, data={'monitor_row': monitor_row})
+        except:
+            logger.error(traceback.format_exc())
+
+
 # @async_task_service.sync_task_decorator("触发通知用户")
 def notify_user_about_some_event(notify_row):
     """
@@ -197,6 +227,9 @@ def notify_user_about_some_event(notify_row):
     elif notify_row.event_id == EventEnum.DOMAIN_EXPIRE:
         # 域名过期
         return notify_user_about_domain_expired(notify_row)
+    elif notify_row.event_id == EventEnum.SSL_CERT_FILE_EXPIRE:
+        # 托管证书到期
+        return notify_user_about_cert_file_expired(notify_row)
     else:
         raise AppException("notify_row event_id not support: {}".format(notify_row.event_id))
 
@@ -264,6 +297,36 @@ def notify_user_about_cert_expired(notify_row):
         row['is_expire_monitor'] = row['is_monitor']
 
     group_service.load_group_name(lst)
+
+    if len(lst) > 0:
+        return notify_user(notify_row, lst)
+
+
+def notify_user_about_cert_file_expired(notify_row):
+    """
+    托管证书到期
+    :param notify_row:
+    :return:
+    """
+    now = datetime.now()
+
+    notify_expire_time = now + timedelta(days=notify_row.expire_days)
+
+    # 注意null的情况
+    query = CertificateModel.select()
+
+    rows = query.where(
+        (CertificateModel.expire_time <= notify_expire_time)
+        | (CertificateModel.expire_time.is_null(True))
+    ).order_by(
+        CertificateModel.expire_time.asc(),
+        CertificateModel.id.desc()
+    )
+
+    lst = [row.to_dict() for row in rows]
+
+    for row in lst:
+        row['expire_days'] = row['real_time_expire_days']
 
     if len(lst) > 0:
         return notify_user(notify_row, lst)
@@ -378,6 +441,9 @@ def notify_user(notify_row, rows, data=None):
 
     elif notify_row.type_id == NotifyTypeEnum.FEISHU:
         return notify_user_by_feishu(notify_row=notify_row, data={**data, 'list': rows})
+
+    elif notify_row.type_id == NotifyTypeEnum.Telegram:
+        return notify_user_by_telegram(notify_row=notify_row, data={**data, 'list': rows})
 
     else:
         logger.warn("type not support")
@@ -509,5 +575,31 @@ def notify_user_by_feishu(notify_row, data):
         body=json.loads(feishu_body),
         params=notify_row.feishu_params
     )
+
+    return res
+
+
+@async_task_service.sync_task_decorator("触发电报通知")
+def notify_user_by_telegram(notify_row: NotifyModel, data):
+    """
+    触发电报通知
+    :param notify_row: NotifyModel
+    :return:
+    """
+
+    # 支持模板变量
+    template = Template(notify_row.telegram_body)
+    telegram_body = template.render(data)
+
+    data = {
+        'token': notify_row.telegram_token,
+        'chat_id': notify_row.telegram_chat_id,
+        'text': telegram_body,
+        'proxies': notify_row.telegram_proxies,
+    }
+
+    logger.info(data)
+
+    res = telegram_api.send_message(**data)
 
     return res

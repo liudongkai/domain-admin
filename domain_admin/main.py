@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function, unicode_literals, absolute_import, division
 
+import traceback
+
 from flask import request, make_response, send_file
 from flask_cors import CORS
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from domain_admin import compat
 from domain_admin.log import logger
-from domain_admin.config import TEMP_DIR
+from domain_admin.config import TEMP_DIR, APP_MODE
 from domain_admin.model.base_model import db
 from domain_admin.model.database import init_database
 from domain_admin.router import api_map, permission
@@ -16,6 +18,7 @@ from domain_admin.service import version_service
 from domain_admin.utils.flask_ext import handler
 from domain_admin.utils.flask_ext import register
 from domain_admin.utils.flask_ext.flask_app import FlaskApp
+from domain_admin.utils.whois_util import whois_util
 
 app = FlaskApp(
     import_name=__name__,
@@ -107,11 +110,19 @@ def init_app(flask_app):
     # 版本自动升级
     version_service.update_version()
 
-    # 启动定时器
-    scheduler_service.init_scheduler()
+    if APP_MODE == 'production':
+        # 启动定时器
+        scheduler_service.init_scheduler()
 
     # 初始化全局常量配置
     system_service.init_system_config(flask_app)
+
+    # 尝试更新whois_servers文件
+    # try:
+    #     whois_util.update_whois_servers()
+    # except Exception as e:
+    #     if APP_MODE == 'development':
+    #         logger.error(traceback.format_exc())
 
 
 init_app(app)

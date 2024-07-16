@@ -142,6 +142,67 @@ https://push.showdoc.com.cn/server/api/push/<API Key>
 }
 ```
 
+### 2.5、webhook发送飞书消息
+
+模板示例由微信群友@kaka 提供
+
+```json
+{
+    "msg_type": "interactive",
+    "card": {
+        "config": {
+                "wide_screen_mode": true,
+                "enable_forward": true
+        },
+        "elements": [{
+                "tag": "div",
+                "text": {
+                        "tag": "plain_text",
+                        "content": "",
+                        "lines": 1
+                        }
+                        ,
+                "fields": [
+
+                        {
+
+                        "text": {
+                            "tag": "lark_md",
+                            "content": "**域名证书 **:  <ul> {%- for row in list %} {%- if row.expire_days > 0 %} <li> {{row.domain}} {{"当前域名或证书  申请时间: "}} {{row.start_date or '-' }} - {{"到期时间: "}} {{row.expire_date or '-' }} {{"剩余: "}}( {% if row.expire_days > 0 %} {{row.expire_days}} {% endif %}  ) {{"天; "}} {% endif %} {% endfor %} </li> </ul> "
+                        }
+                    }
+
+                ]
+
+                },
+
+
+         {
+                "actions": [{
+                        "tag": "button",
+
+                        "text": {
+                                "content": "域名或证书过期提醒 :玫瑰:",
+                                "tag": "lark_md"
+                        },
+                        "url": "https://dc.console.aliyun.com/",
+                        "type": "primary",
+                        "value": {
+                                         "chosen": "approve"
+                        }
+                }],
+                "tag": "action"
+        }],
+        "header": {
+                "title": {
+                        "content": "域名或证书过期  告警",
+                        "tag": "plain_text"
+                },
+                "template": "red"
+        }
+    }
+}
+```
 ## 3、企业微信
 
 ```json
@@ -333,3 +394,31 @@ WebHook、企业微信、飞书、钉钉均支持自定义通知模板
     ]
 }
 ```
+
+
+### 6.4、监控异常
+      
+异常通知和异常恢复通知的字段一致
+                   
+```json
+{
+    "monitor_row": {
+        "title": "名称",
+        "http_url": "请求URL",
+        "allow_error_count": 3,
+        "status": 2
+    },
+    "error": "报错信息"
+}
+```
+
+参数说明
+
+| 参数  | 类型  | 说明 |
+| -| - | - |
+| error | string | 报错信息
+| monitor_row.title | string | 名称
+| monitor_row.http_url | string | 请求URL
+| monitor_row.allow_error_count | int | 重试次数
+| monitor_row.status | int | 状态：0未知，1成功，2失败
+

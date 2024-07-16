@@ -5,13 +5,15 @@ domain_service.py
 from __future__ import print_function, unicode_literals, absolute_import, division
 
 import io
+import time
 import traceback
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from peewee import chunked, fn
 from playhouse.shortcuts import model_to_dict
 
 from domain_admin.enums.role_enum import RoleEnum
+from domain_admin.enums.source_enum import SourceEnum
 from domain_admin.log import logger
 from domain_admin.model import domain_model
 from domain_admin.model.address_model import AddressModel
@@ -71,9 +73,36 @@ def update_domain_address_list_cert(domain_row):
 
     err = ''
     for address_row in lst:
-        err = update_address_row_info(address_row, domain_row)
+        err = update_address_row_info_wrap(address_row, domain_row)
 
     sync_address_info_to_domain_info(domain_row)
+    return err
+
+
+def update_address_row_info_wrap(address_row, domain_row):
+    """
+    更新单个地址信息 的代理方法 增加重试次数
+    :param address_row:
+    :param domain_row:
+    :return: error
+    """
+    # 最大重试次数
+    MAX_RETRY_COUNT = 3
+    retry_count = 0
+    err = ''
+
+    while True:
+        retry_count += 1
+        logger.info("retry_count: %s", retry_count)
+
+        err = update_address_row_info(address_row, domain_row)
+
+        if not err or retry_count >= MAX_RETRY_COUNT:
+            break
+
+        # sleep
+        time.sleep(0.5)
+
     return err
 
 
@@ -82,7 +111,7 @@ def update_address_row_info(address_row, domain_row):
     更新单个地址信息
     :param domain_row:
     :param address_row:
-    :return:
+    :return: error
     """
 
     # 获取证书信息
@@ -129,7 +158,7 @@ def update_address_row_info_with_sync_domain_row(address_id):
 
     domain_row = DomainModel.get_by_id(address_row.domain_id)
 
-    update_address_row_info(address_row, domain_row)
+    update_address_row_info_wrap(address_row, domain_row)
 
     sync_address_info_to_domain_info(domain_row)
 
@@ -162,6 +191,7 @@ def sync_address_info_to_domain_info(domain_row):
         expire_days=first_address_row.real_time_ssl_expire_days,
         connect_status=connect_status,
         update_time=datetime_util.get_datetime(),
+        version=DomainModel.version + 1
     ).where(
         DomainModel.id == domain_row.id
     ).execute()
@@ -188,7 +218,7 @@ def update_domain_row(domain_row):
     # 移除动态主机行为，都清空自动添加的数据再获取
     AddressModel.delete().where(
         AddressModel.domain_id == domain_row.id,
-        AddressModel.source == 0
+        AddressModel.source == SourceEnum.AUTO
     ).execute()
 
     # 主机ip信息
@@ -327,8 +357,24 @@ def check_permission_and_get_row(domain_id, user_id):
     return row
 
 
+@async_task_service.async_task_decorator("自动批量导入子域名证书")
+def auto_import_from_domain_batch_async(rows, user_id):
+    # type: (list[DomainInfoModel], int)->None
+    """
+    自动批量导入子域名证书
+    :param rows:
+    :param user_id:
+    :return:
+    """
+    for row in rows:
+        auto_import_from_domain(root_domain=row.domain, group_id=row.group_id, user_id=user_id)
+
+    init_domain_cert_info_of_user(user_id=user_id)
+
+
 @async_task_service.async_task_decorator("自动导入子域名证书")
 def auto_import_from_domain_async(root_domain, group_id=0, user_id=0):
+    # type: (str, int, int)->None
     auto_import_from_domain(root_domain=root_domain, group_id=group_id, user_id=user_id)
 
     init_domain_cert_info_of_user(user_id=user_id)
@@ -532,11 +578,19 @@ def get_domain_list_query(keyword, group_id, group_ids, expire_days, user_id, ro
 
     if expire_days is not None:
         if expire_days[0] is None:
-            query = query.where(DomainModel.expire_days <= expire_days[1])
+            max_expire_time = datetime.now() + timedelta(days=expire_days[1])
+            query = query.where(
+                (DomainModel.expire_time <= max_expire_time)
+                | (DomainModel.expire_time.is_null(True))
+            )
         elif expire_days[1] is None:
-            query = query.where(DomainModel.expire_days >= expire_days[0])
+            min_expire_time = datetime.now() + timedelta(days=expire_days[0])
+            query = query.where(DomainModel.expire_time >= min_expire_time)
         else:
-            query = query.where(DomainModel.expire_days.between(expire_days[0], expire_days[1]))
+            min_expire_time = datetime.now() + timedelta(days=expire_days[0])
+            max_expire_time = datetime.now() + timedelta(days=expire_days[1])
+
+            query = query.where(DomainModel.expire_time.between(min_expire_time, max_expire_time))
 
     return query
 

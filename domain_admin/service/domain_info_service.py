@@ -233,8 +233,8 @@ def add_domain_from_file(filename, user_id):
             'domain_start_time': item.get('domain_start_date'),
             'domain_expire_time': item.get('domain_expire_date'),
             'domain_expire_days': item.get('real_domain_expire_days') or 0,
-            'icp_company': item.get('icp_company'),
-            'icp_licence': item.get('icp_licence'),
+            'icp_company': item.get('icp_company') or '',
+            'icp_licence': item.get('icp_licence') or '',
             'user_id': user_id,
         } for item in lst if item.get('root_domain')
     ]
@@ -310,10 +310,14 @@ def get_domain_info_query(keyword, group_ids, domain_expire_days, role, user_id)
         elif domain_expire_days[0] is None:
             query = query.where(DomainInfoModel.domain_expire_days <= domain_expire_days[1])
         elif domain_expire_days[1] is None:
-            query = query.where(DomainInfoModel.domain_expire_days >= domain_expire_days[0])
+            min_expire_time = datetime.now() + timedelta(days=domain_expire_days[0])
+            query = query.where(DomainInfoModel.domain_expire_time >= min_expire_time)
         else:
+            min_expire_time = datetime.now() + timedelta(days=domain_expire_days[0])
+            max_expire_time = datetime.now() + timedelta(days=domain_expire_days[1])
+
             query = query.where(
-                DomainInfoModel.domain_expire_days.between(domain_expire_days[0], domain_expire_days[1]))
+                DomainInfoModel.domain_expire_time.between(min_expire_time, max_expire_time))
 
     return query
 
@@ -324,9 +328,9 @@ def get_ordering(order_prop='expire_days', order_type='ascending'):
     # order by domain_expire_days
     if order_prop == 'domain_expire_days':
         if order_type == 'descending':
-            ordering.append(DomainInfoModel.domain_expire_days.desc())
+            ordering.append(DomainInfoModel.domain_expire_time.desc())
         else:
-            ordering.append(DomainInfoModel.domain_expire_days.asc())
+            ordering.append(DomainInfoModel.domain_expire_time.asc())
 
     # order by domain
     elif order_prop == 'domain':
@@ -356,7 +360,7 @@ def get_ordering(order_prop='expire_days', order_type='ascending'):
         else:
             ordering.append(DomainInfoModel.is_expire_monitor.asc())
 
-    # order by is_auto_update
+    # fix: order by is_auto_update
     elif order_prop == 'is_auto_update':
         if order_type == 'descending':
             ordering.append(DomainInfoModel.is_auto_update.desc())

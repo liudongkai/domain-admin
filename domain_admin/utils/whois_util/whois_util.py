@@ -8,11 +8,14 @@ https://www.iana.org/domains/root/db
 """
 
 from __future__ import print_function, unicode_literals, absolute_import, division
+
+import io
 import json
 import re
 from copy import deepcopy
 from datetime import datetime
 
+import requests
 from dateutil import parser
 
 from domain_admin.log import logger
@@ -21,8 +24,8 @@ from domain_admin.utils.whois_util.config import (
     CUSTOM_WHOIS_CONFIGS,
     DEFAULT_WHOIS_CONFIG,
     ROOT_SERVER,
-    REGISTRAR_CONFIG_MAP
-)
+    REGISTRAR_CONFIG_MAP,
+    TEMP_WHOIS_SERVERS_PATH)
 from domain_admin.utils.whois_util.util import parse_whois_raw, get_whois_raw, load_whois_servers
 
 WHOIS_CONFIGS = None
@@ -139,6 +142,8 @@ def get_domain_raw_whois(domain, whois_server=None):
 
     whois_server = whois_config['whois_server']
 
+    logger.info('whois_server: %s', whois_server)
+
     raw_data = get_whois_raw(domain, whois_server, timeout=10)
     logger.debug('get_domain_raw_whois\n%s', raw_data)
     return raw_data
@@ -234,6 +239,18 @@ def get_domain_info(domain, domain_whois_server=None):
     logger.debug(json_util.json_encode(res, indent=2, ensure_ascii=False))
 
     return res
+
+
+def update_whois_servers():
+    logger.info("update whois-servers")
+    # https://github.com/WooMai/whois-servers/blob/master/list.txt
+    # url = 'https://raw.githubusercontent.com/WooMai/whois-servers/master/list.txt'
+    url = 'https://raw.gitmirror.com/WooMai/whois-servers/master/list.txt'
+    res = requests.get(url, timeout=3)
+
+    if res.ok:
+        with io.open(TEMP_WHOIS_SERVERS_PATH, 'w', encoding='utf-8') as f:
+            f.write(res.text)
 
 
 if __name__ == '__main__':

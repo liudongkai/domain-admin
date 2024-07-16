@@ -6,7 +6,8 @@ from __future__ import print_function, unicode_literals, absolute_import, divisi
 
 from datetime import datetime
 
-from peewee import CharField, IntegerField, DateTimeField, AutoField
+from peewee import CharField, IntegerField, DateTimeField, AutoField, TextField
+from playhouse.shortcuts import model_to_dict
 
 from domain_admin.config import DEFAULT_SSH_PORT
 from domain_admin.enums.host_auth_type_enum import HostAuthTypeEnum
@@ -34,7 +35,8 @@ class HostModel(BaseModel):
     # 验证方式，默认密码
     auth_type = IntegerField(default=HostAuthTypeEnum.PASSWORD)
 
-    private_key = CharField(default=None, null=True)
+    # CharField -> TextField
+    private_key = TextField(default=None, null=True)
 
     password = CharField(default=None, null=True)
 
@@ -48,9 +50,28 @@ class HostModel(BaseModel):
         table_name = 'tb_host'
 
     @property
+    def host_id(self):
+        return self.id
+
+    @property
     def create_time_label(self):
         return datetime_util.time_for_human(self.create_time)
 
     @property
     def update_time_label(self):
         return datetime_util.time_for_human(self.update_time)
+
+    def to_hidden_dict(self):
+        data = model_to_dict(
+            model=self,
+            extra_attrs=[
+                # 'create_time_label',
+                # 'update_time_label',
+                'host_id',
+            ],
+            only=[
+                HostModel.host,
+                HostModel.port,
+            ]
+        )
+        return data
