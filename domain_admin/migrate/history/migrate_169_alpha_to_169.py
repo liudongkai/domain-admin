@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-@File    : migrate_168_to_169.py
+@File    : migrate_169_alpha_to_169.py
 @Date    : 2023-09-17
 
 cmd:
-$ python domain_admin/migrate/migrate_168_to_169.py
+$ python domain_admin/migrate/migrate_169_alpha_to_169.py
 """
 from __future__ import print_function, unicode_literals, absolute_import, division
 

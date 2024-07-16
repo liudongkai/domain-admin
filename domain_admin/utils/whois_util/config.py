@@ -105,6 +105,12 @@ CUSTOM_WHOIS_CONFIGS = {
         'expire_time': 'Expiration Date',
         "expire_time_format": '%Y. %m. %d.',
     },
+    'it': {
+        'registry_time': 'Created',
+        "registry_time_format": '%Y-%m-%d %H:%M:%S',
+        'expire_time': 'Expire Date',
+        "expire_time_format": '%Y-%m-%d',
+    },
     'whois.markmonitor.com': {
         'whois_server': 'whois.markmonitor.com',
         'registry_time': 'Creation Date',

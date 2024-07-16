@@ -26,7 +26,7 @@ from domain_admin.migrate.history import (
     migrate_106_to_110,
     migrate_1533_to_1534,
     migrate_162_to_163,
-    migrate_168_to_169,
+    migrate_168_to_169_alpha,migrate_169_alpha_to_169,
     migrate_1610_to_1611,
     migrate_1625_to_1626, migrate_1633_to_1634, migrate_1634_to_1635)
 
@@ -341,7 +341,16 @@ MIGRATE_CONFIG = [
             VersionEnum.Version_167,
             VersionEnum.Version_168,
         ],
-        'migrate_func': migrate_168_to_169.execute_migrate,
+        'migrate_func': migrate_168_to_169_alpha.execute_migrate,
+        'update_version': VersionEnum.Version_169_alpha
+    },
+    # 2024-02-20
+    # 1.6.8 => 1.6.9
+    {
+        'local_versions': [
+            VersionEnum.Version_169_alpha,
+        ],
+        'migrate_func': migrate_169_alpha_to_169.execute_migrate,
         'update_version': VersionEnum.Version_169
     },
 
