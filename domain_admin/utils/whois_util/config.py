@@ -57,6 +57,14 @@ CUSTOM_WHOIS_CONFIGS = {
         'expire_time': '[有効期限]',
         "expire_time_format": '%Y/%m/%d',
     },
+    'se': {
+        'registry_time': 'created',
+        'expire_time': 'expires',
+    },
+    'ru': {
+        'registry_time': 'created',
+        'expire_time': 'paid-till',
+    },
 
     '中国': {
         'whois_server': 'cwhois.cnnic.cn',
@@ -96,6 +104,13 @@ CUSTOM_WHOIS_CONFIGS = {
         "registry_time_format": '%Y. %m. %d.',
         'expire_time': 'Expiration Date',
         "expire_time_format": '%Y. %m. %d.',
+    },
+    'whois.markmonitor.com': {
+        'whois_server': 'whois.markmonitor.com',
+        'registry_time': 'Creation Date',
+        "registry_time_format": '%Y-%m-%dT%H:%M:%S%z',
+        'expire_time': 'Registrar Registration Expiration Date',
+        "expire_time_format": '%Y-%m-%dT%H:%M:%S%z',
     },
 }
 

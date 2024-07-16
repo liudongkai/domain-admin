@@ -87,12 +87,12 @@ def update_domain_info_row(row):
     domain_whois = None
 
     try:
-        domain_whois = whois_util.get_domain_info(row.domain)
+        domain_whois = whois_util.get_domain_info(row.domain, row.domain_whois_server)
     except Exception as e:
         # 增加容错
         try:
             time.sleep(3)
-            domain_whois = whois_util.get_domain_info(row.domain)
+            domain_whois = whois_util.get_domain_info(row.domain, row.domain_whois_server)
         except Exception as e:
             pass
 
@@ -226,8 +226,9 @@ def add_domain_from_file(filename, user_id):
     lst = [
         {
             'domain': item['domain'],
-            'comment': item.get('comment') or '',
-            'group_id': group_map.get(item.get('group_name')) or 0,
+            # 如果item.get('comment')为None，会导致插入失败
+            'comment': item.get('comment', ''),
+            'group_id': group_map.get(item.get('group_name'), 0),
             'tags_raw': json.dumps(item.get('tags'), ensure_ascii=False),
             'domain_start_time': item.get('domain_start_date'),
             'domain_expire_time': item.get('domain_expire_date'),
@@ -304,12 +305,10 @@ def get_domain_info_query(keyword, group_ids, domain_expire_days, role, user_id)
             query = query.where(DomainInfoModel.user_id == user_id)
 
     if domain_expire_days is not None and len(domain_expire_days) == 2:
-        if domain_expire_days[0] is None:
-            max_expire_time = datetime.now() + timedelta(days=domain_expire_days[1])
-            query = query.where(
-                (DomainInfoModel.domain_expire_time <= max_expire_time)
-                | (DomainInfoModel.domain_expire_time.is_null(True))
-            )
+        if domain_expire_days[0] is None and domain_expire_days[1] is None:
+            query = query.where(DomainInfoModel.domain_expire_days.is_null())
+        elif domain_expire_days[0] is None:
+            query = query.where(DomainInfoModel.domain_expire_days <= domain_expire_days[1])
         elif domain_expire_days[1] is None:
             min_expire_time = datetime.now() + timedelta(days=domain_expire_days[0])
             query = query.where(DomainInfoModel.domain_expire_time >= min_expire_time)

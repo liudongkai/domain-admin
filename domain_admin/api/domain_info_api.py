@@ -100,6 +100,7 @@ def update_domain_info_by_id():
     domain = domain_util.get_root_domain(request.json['domain'])
     domain_start_time = request.json.get('domain_start_time')
     domain_expire_time = request.json.get('domain_expire_time')
+    domain_whois_server = request.json.get('domain_whois_server')
     is_auto_update = request.json.get('is_auto_update', True)
     is_auto_subdomain = request.json.get('is_auto_subdomain', False)
     comment = request.json.get('comment', '')
@@ -117,6 +118,7 @@ def update_domain_info_by_id():
         'domain': domain,
         'comment': comment,
         'group_id': group_id,
+        'domain_whois_server': domain_whois_server,
         'tags_raw': json.dumps(tags, ensure_ascii=False),
         'icp_company': icp_company,
         'icp_licence': icp_licence,
